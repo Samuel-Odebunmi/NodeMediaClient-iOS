@@ -1,11 +1,11 @@
 Pod::Spec.new do |spec|
   spec.name          = 'NodeMediaClient'
-  spec.version       = '3.2.0'
+  spec.version       = '3.2,9'
   spec.summary       = 'A live streaming SDK.'
   spec.license       = { :type => 'Copyright', :text => 'Copyright 2021 NodeMedia Ltd. All rights reserved.' }
   spec.homepage      = 'http://www.nodemedia.cn'
   spec.author        = { 'Mingliang Chen' => 'illuspas@gmail.com' }
-  spec.source        = { :git => 'https://github.com/Samuel-Odebunmi/nodemediaclient.git', :tag => "#{spec.version}" }
+  spec.source        = { :git => 'https://github.com/Samuel-Odebunmi/NodeMediaClient-iOS.git', :tag => "#{spec.version}" }
   spec.platform      = :ios, '9.0'
   spec.source_files  = 'NodeMediaClient/NodeMediaClient.framework/Headers/*.{h}'
   spec.vendored_frameworks = 'NodeMediaClient/NodeMediaClient.framework'
