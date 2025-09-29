@@ -2,142 +2,159 @@
 //  NodePublisher.h
 //  NodeMediaClient
 //
-//  Created by ALiang on 2023/4/23.
+//  Created by Mingliang Chen on 17/3/23.
+//  Copyright © 2017年 Mingliang Chen. All rights reserved.
 //
 
 #import <Foundation/Foundation.h>
+#import <AVFoundation/AVFoundation.h>
 
+#define AUDIO_PROFILE_LCAAC     0           //LC-AAC
+#define AUDIO_PROFILE_HEAAC     1           //HE-AAC
+#define AUDIO_PROFILE_SPEEX     2           //SPEEX
 
-NS_ASSUME_NONNULL_BEGIN
+#define VIDEO_PROFILE_BASELINE  0           //H.264 Baseline profile
+#define VIDEO_PROFILE_MAIN      1           //H.264 Main profile
+#define VIDEO_PROFILE_HIGH      2           //H.264 High profile
+#define VIDEO_PROFILE_HEVC_MAIN 3           //H.265 Main profile
 
-#define NMC_CODEC_ID_H264                 27
-#define NMC_CODEC_ID_H265                 173
-#define NMC_CODEC_ID_AAC                  86018
+#define CAMERA_BACK             0           //后置摄像头
+#define CAMERA_FRONT            1           //前置摄像头
 
-#define NMC_PROFILE_AUTO                  0
-#define NMC_PROFILE_H264_BASELINE         66
-#define NMC_PROFILE_H264_MAIN             77
-#define NMC_PROFILE_H264_HIGH             100
-#define NMC_PROFILE_H265_MAIN             1
-#define NMC_PROFILE_AAC_LC                1
-#define NMC_PROFILE_AAC_HE                4
-#define NMC_PROFILE_AAC_HE_V2             28
-#define NMC_PROFILE_AAC_LD                22
-#define NMC_PROFILE_AAC_ELD               38
+typedef enum {
+    VIDEO_PPRESET_16X9_270,
+    VIDEO_PPRESET_16X9_360,
+    VIDEO_PPRESET_16X9_480,
+    VIDEO_PPRESET_16X9_540,
+    VIDEO_PPRESET_16X9_720,
+    VIDEO_PPRESET_16X9_1080,
+    
+    VIDEO_PPRESET_4X3_270=10,
+    VIDEO_PPRESET_4X3_360,
+    VIDEO_PPRESET_4X3_480,
+    VIDEO_PPRESET_4X3_540,
+    VIDEO_PPRESET_4X3_720,
+    VIDEO_PPRESET_4X3_1080,
+    
+    VIDEO_PPRESET_1X1_270=20,
+    VIDEO_PPRESET_1X1_360,
+    VIDEO_PPRESET_1X1_480,
+    VIDEO_PPRESET_1X1_540,
+    VIDEO_PPRESET_1X1_720,
+    VIDEO_PPRESET_1X1_1080,
+    
+}VideoPreset;
 
-#define VIDEO_ORIENTATION_PORTRAIT        1
-#define VIDEO_ORIENTATION_LANDSCAPE_RIGHT 3
-#define VIDEO_ORIENTATION_LANDSCAPE_LEFT  4
-
-#define FLAG_AF  1
-#define FLAG_AE  2
-#define FLAG_AWB  4
-
-#define NMC_DEVICE_TYPE_WideAngleCamera 0 // 广角
-#define NMC_DEVICE_TYPE_TelephotoCamera 1 // 长焦
-#define NMC_DEVICE_TYPE_UltraWideCamera 2 // 超广角
-#define NMC_DEVICE_TYPE_DualCamera 3 // 双摄
-#define NMC_DEVICE_TYPE_TripleCamera 4 // 三摄
-
-#define NMC_EXPORT                        __attribute__((visibility("default")))
-
-@class UIView;
+typedef void (^CapturePictureBlock)(UIImage * _Nullable image);
 
 @protocol NodePublisherDelegate
 
-- (void)onEventCallback:(id)sender event:(int)event msg:(NSString *)msg;
+-(void) onEventCallback:(id _Nonnull)sender event:(int)event msg:(NSString* _Nonnull)msg;
 
 @end
 
-NMC_EXPORT
+@protocol NodePublisherVideoSampleDelegate
+
+- (CVImageBufferRef)didOutputVideoSampleBuffer:(CMSampleBufferRef)sampleBuffer;
+
+@end
+
+@class UIView;
 @interface NodePublisher : NSObject
 
-///事件委托
-@property (nonatomic, weak) id <NodePublisherDelegate> nodePublisherDelegate;
+@property (nullable, nonatomic, weak) id<NodePublisherDelegate> nodePublisherDelegate;
+@property (nullable, nonatomic, weak) id<NodePublisherVideoSampleDelegate> nodePublisherVideoSampleDelegate;
 
-///日志等级 0-error，1-info，2-debug
-@property (nonatomic) NSUInteger logLevel;
+///音视频直播流地址
+@property (nonnull, nonatomic, strong) NSString *outputUrl;
 
-/// 是否开启硬件加速编码
-@property (nonatomic) Boolean HWAccelEnable;
+///rtmp协议连接下附加pageurl参数
+@property (nonnull, nonatomic, strong) NSString *pageUrl;
 
-/// 是否开启背景音降噪
-@property (nonatomic) Boolean denoiseEnable;
+///rtmp协议连接下附加swfUrl参数
+@property (nonnull, nonatomic, strong) NSString *swfUrl;
 
-///音视频内容加密密码，16字节字符串
-@property (nonatomic, copy) NSString *cryptoKey;
+/**
+ * @brief rtmpdump 风格的connect参数
+ * Append arbitrary AMF data to the Connect message. The type must be B for Boolean, N for number, S for string, O for object, or Z for null.
+ * For Booleans the data must be either 0 or 1 for FALSE or TRUE, respectively. Likewise for Objects the data must be 0 or 1 to end or begin an object, respectively.
+ * Data items in subobjects may be named, by prefixing the type with 'N' and specifying the name before the value, e.g. NB:myFlag:1.
+ * This option may be used multiple times to construct arbitrary AMF sequences. E.g.
+ */
+@property (nonnull, nonatomic, strong) NSString *connArgs;
 
-/////预览前置摄像头画面是否镜像
-//@property(nonatomic) Boolean cameraFrontMirror;
-//
-/////编码前置摄像头画面是否镜像
-//@property(nonatomic) Boolean videoFrontMirror;
+///自动重连超时等待时间,单位毫秒,默认为0. 当为0时不自动重连
+@property (nonatomic) NSUInteger autoReconnectWaitTimeout;
 
-///视频关键帧间隔，单位秒
-@property (nonatomic) NSUInteger keyFrameInterval;
+///连接或数据为空超时等待时间,单位毫秒,默认0. 当为0时永久等待
+@property (nonatomic) NSUInteger connectWaitTimeout;
 
-///视频方向
-@property (nonatomic) NSUInteger videoOrientation;
+///开关闪光灯
+@property (nonatomic, assign) BOOL flashEnable;
 
-///设置麦克风音量，
-///0.0 麦克风静音
-///1.0 默认值
-///2.0 增益
-@property (nonatomic) float volume;
+///设置缩放等级 0 ~ 100
+@property (nonatomic, assign) NSUInteger zoomScale;
 
-@property (nonatomic) Boolean enhancedRtmp;
+///设置美颜等级 0 ~ 5
+@property (nonatomic, assign) NSUInteger beautyLevel;
 
-///以注册码初始化推流器
-- (id)initWithLicense:(NSString *)license;
+///当为YES时,摄像头将全时自动对焦. 当为NO时,每请求一次,对焦一次,之后锁定焦距
+@property (nonatomic, assign) BOOL autoFocus;
 
-///打开摄像头，是否是前置打开
-- (int)openCamera:(Boolean)frontCamera;
+///硬件加速编码
+@property (nonatomic, assign) BOOL hwEnable;
 
-///打开指定类型摄像头，是否是前置打开
-- (int)openCameraDevice:(int)deviceType withFront:(Boolean)frontCamera;
+///是否采集音频
+@property (nonatomic, assign) BOOL audioEnable;
 
-///关闭摄像头
-- (int)closeCamera;
+///是否采集视频
+@property (nonatomic, assign) BOOL videoEnable;
 
-///切换摄像头
-- (int)switchCamera;
+///是否开启背景音降噪
+@property (nonatomic, assign) BOOL denoiseEnable;
 
-///设置音频编码参数
-- (void)setAudioParamWithCodec:(int)c profile:(int)p samplerate:(int)s channels:(int)ch bitrate:(int)b;
+///是否开启动态码率调整
+@property (nonatomic, assign) BOOL dynamicRateEnable;
 
-///设置视频编码参数
-- (void)setVideoParamWithCodec:(int)c profile:(int)p width:(int)w height:(int)h fps:(int)f bitrate:(int)b;
+///视频关键帧间隔，单位为秒，默认为1
+@property (nonatomic, assign) NSUInteger keyFrameInterval;
 
-///开始推送视频流
-- (int)start:(NSString *)url;
+///设置视频加密秘钥, 16字节
+@property (nonnull, nonatomic, strong) NSString *cryptoKey;
 
-///停止推送视频流
-- (int)stop;
+///设置日志等级，0-错误，1-信息，2-调试
+@property (nonatomic) int logLevel;
 
-///添加额外输出，可以是直播流地址，也可以是全路径的文件，支持flv,mp4,ts,mkv格式
-- (int)addOutput:(NSString *)url;
+-(instancetype _Nonnull)initWithLicense:(NSString* _Nonnull)key;
 
-///移除全部额外输出
-- (int)removeOutputs;
+///设置摄像头预览视图
+-(void) setCameraPreview:(UIView* _Nonnull)preView cameraId:(int)cameraId frontMirror:(BOOL)frontMirror;
 
-///附加到视图
-- (void)attachView:(UIView *)view;
+///设置音频参数
+-(void) setAudioParamBitrate:(int)bitrate profile:(int)profile;
 
-///从视图移除
-- (void)detachView;
+///设置音频参数
+-(void) setAudioParamBitrate:(int)bitrate profile:(int)profile sampleRate:(int)sampleRate;
 
-/// 开启闪光灯补光
-- (void)enableTorch:(Boolean)enable;
+///设置视频参数
+-(void) setVideoParamPreset:(VideoPreset)preset fps:(int)fps bitrate:(int)bitrate profile:(int)profile frontMirror:(BOOL)frontMirror;
 
-/// 设置缩放, 0.0-1.0
-- (void)setRoomRatio:(float)ratio;
+///摄像头开始预览
+-(int) startPreview;
 
-/// 设置中心点自动对焦曝光白平衡
-- (void)startFocusAndMeteringCenter;
+///摄像头停止预览
+-(int) stopPreview;
 
-/// 设置自动对焦曝光白平衡
-- (void)startFocusAndMetering:(nullable CGPoint*)point withFlags:(int)flags;
+///切换前后摄像头
+-(int) switchCamera;
+
+//截图
+-(void) capturePicture:(CapturePictureBlock _Nonnull)capturePictureBlock;
+
+///开始推流
+-(int) start;
+
+///停止推流
+-(int) stop;
 
 @end
-
-NS_ASSUME_NONNULL_END
